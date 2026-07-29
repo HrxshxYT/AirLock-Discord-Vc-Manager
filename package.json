@@ -1,0 +1,15 @@
+{
+  "name": "cutie-vc-bot",
+  "version": "1.0.0",
+  "description": "꒰ঌ cutie vc manager ໒꒱ — aesthetic join-to-create voice + moderation bot",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@napi-rs/canvas": "^0.1.65",
+    "discord.js": "^14.16.0",
+    "dotenv": "^16.4.5"
+  }
+}
