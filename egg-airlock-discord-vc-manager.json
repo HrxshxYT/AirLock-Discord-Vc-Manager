@@ -1,0 +1,105 @@
+{
+    "_comment": "Pterodactyl Egg — AirLock Discord VC Manager (discord.js). Import via Admin > Nests > Import Egg.",
+    "meta": {
+        "version": "PTDL_v2",
+        "update_url": null
+    },
+    "exported_at": "2026-07-30T00:00:00+00:00",
+    "name": "AirLock — Discord VC Manager",
+    "author": "contact@hrxshx.com",
+    "description": "꒰ঌ AirLock ໒꒱ — a cute, aesthetic join-to-create Discord voice-channel manager with moderation (kick/ban/quarantine, voice-ban), owner control panel, DISBOARD bump reminders and a pixel-art banner. Built with discord.js v14 + @napi-rs/canvas.",
+    "features": null,
+    "docker_images": {
+        "Node.js 22": "ghcr.io/pterodactyl/yolks:nodejs_22",
+        "Node.js 21": "ghcr.io/pterodactyl/yolks:nodejs_21",
+        "Node.js 20": "ghcr.io/pterodactyl/yolks:nodejs_20",
+        "Node.js 18": "ghcr.io/pterodactyl/yolks:nodejs_18"
+    },
+    "file_denylist": [],
+    "startup": "if [[ \"${AUTO_UPDATE}\" == \"1\" ]] && [[ -d .git ]]; then echo \"[AirLock] pulling updates...\"; git pull; fi; if [ ! -d /home/container/node_modules ] || [[ \"${AUTO_UPDATE}\" == \"1\" ]]; then echo \"[AirLock] installing dependencies...\"; npm install --omit=dev; fi; node /home/container/${MAIN_FILE}",
+    "config": {
+        "files": "{}",
+        "startup": "{\r\n    \"done\": \"logged in as\"\r\n}",
+        "logs": "{}",
+        "stop": "^C"
+    },
+    "scripts": {
+        "installation": {
+            "script": "#!/bin/bash\n# ─────────────────────────────────────────────────────────────\n# AirLock — Discord VC Manager · Pterodactyl install script\n# ─────────────────────────────────────────────────────────────\napt update -y\napt install -y git curl ca-certificates\n\nmkdir -p /mnt/server\ncd /mnt/server\n\nif [ \"${USER_UPLOAD}\" == \"1\" ] || [ \"${USER_UPLOAD}\" == \"true\" ]; then\n    echo \"USER_UPLOAD enabled — skipping git clone. Upload your own files to the server.\"\nelse\n    if [ -z \"${GIT_ADDRESS}\" ]; then\n        echo \"No GIT_ADDRESS set and USER_UPLOAD is off — nothing to fetch.\"\n    else\n        # normalise the address (allow with or without .git)\n        if [[ \"${GIT_ADDRESS}\" != *.git ]]; then\n            GIT_ADDRESS=\"${GIT_ADDRESS}.git\"\n        fi\n        if [ -d .git ]; then\n            echo \"Existing repository found — pulling latest changes...\"\n            git pull\n        else\n            echo \"Cloning ${GIT_ADDRESS} (branch ${BRANCH:-main})...\"\n            git clone --branch \"${BRANCH:-main}\" \"${GIT_ADDRESS}\" .\n        fi\n    fi\nfi\n\nif [ -f package.json ]; then\n    echo \"Installing Node.js dependencies (production only)...\"\n    npm install --omit=dev\nelse\n    echo \"WARNING: no package.json found — did the clone/upload succeed?\"\nfi\n\necho \"-------------------------------------------------------\"\necho \"  AirLock install complete!\"\necho \"  -> Set DISCORD_TOKEN in the server's Startup tab.\"\necho \"  -> Leave GUILD_ID blank for a public (global) bot.\"\necho \"-------------------------------------------------------\"\n",
+            "container": "node:22-bookworm-slim",
+            "entrypoint": "bash"
+        }
+    },
+    "variables": [
+        {
+            "name": "Discord Bot Token",
+            "description": "Your bot token from the Discord Developer Portal (Bot > Reset Token). Keep this secret!",
+            "env_variable": "DISCORD_TOKEN",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|string",
+            "field_type": "text"
+        },
+        {
+            "name": "Guild ID (optional)",
+            "description": "A server ID for INSTANT slash-command registration during testing. Leave BLANK for a public bot (global sync, can take up to ~1 hour to appear).",
+            "env_variable": "GUILD_ID",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "nullable|string",
+            "field_type": "text"
+        },
+        {
+            "name": "Git Repository",
+            "description": "The git repo the bot code is pulled from on install/update. Change this if you fork it.",
+            "env_variable": "GIT_ADDRESS",
+            "default_value": "https://github.com/HrxshxYT/AirLock-Discord-Vc-Manager",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "nullable|string",
+            "field_type": "text"
+        },
+        {
+            "name": "Git Branch",
+            "description": "Which branch to clone/pull.",
+            "env_variable": "BRANCH",
+            "default_value": "main",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|string",
+            "field_type": "text"
+        },
+        {
+            "name": "User Uploaded Files",
+            "description": "Set to 1 if you want to upload your own files instead of cloning from git. 0 = clone from the repo above.",
+            "env_variable": "USER_UPLOAD",
+            "default_value": "0",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|boolean",
+            "field_type": "text"
+        },
+        {
+            "name": "Auto Update",
+            "description": "Set to 1 to git-pull and reinstall dependencies on every restart. 0 = start faster, update manually.",
+            "env_variable": "AUTO_UPDATE",
+            "default_value": "1",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|boolean",
+            "field_type": "text"
+        },
+        {
+            "name": "Main File",
+            "description": "The entry file the bot runs.",
+            "env_variable": "MAIN_FILE",
+            "default_value": "index.js",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|string",
+            "field_type": "text"
+        }
+    ]
+}

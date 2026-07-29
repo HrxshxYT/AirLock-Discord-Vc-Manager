@@ -52,6 +52,30 @@ gives one clean disconnect. Stronger control, zero ToS risk.
 
 3. In Discord, run `/setup`, then join `꒰ঌ join to create ໒꒱`. ♡
 
+## ✧ hosting on Pterodactyl
+
+A ready-to-import egg is included: **`egg-airlock-discord-vc-manager.json`**.
+
+1. In your panel: **Admin → Nests → Import Egg** → upload the JSON (put it in any nest).
+2. Create a server using the **AirLock — Discord VC Manager** egg.
+3. In the server's **Startup** tab, set **`DISCORD_TOKEN`** (and optionally `GUILD_ID`).
+4. Start it. On first boot it clones this repo, runs `npm install`, and launches.
+
+**Egg variables:**
+
+| variable | default | what it does |
+| --- | --- | --- |
+| `DISCORD_TOKEN` | *(blank)* | **required** — your bot token |
+| `GUILD_ID` | *(blank)* | set a server ID for instant command sync; blank = global/public |
+| `GIT_ADDRESS` | this repo | where the code is pulled from (change if you fork) |
+| `BRANCH` | `main` | branch to clone/pull |
+| `USER_UPLOAD` | `0` | `1` = upload your own files instead of cloning |
+| `AUTO_UPDATE` | `1` | `1` = git-pull + reinstall on every restart |
+| `MAIN_FILE` | `index.js` | entry file |
+
+> The banner font (`font.ttf`, DejaVu Sans Mono Bold) is bundled so the image renders
+> correctly on the minimal Pterodactyl containers — no system fonts required.
+
 ## ✧ slash-command registration
 
 - Leave **`GUILD_ID` blank** → commands register **globally** (correct for a public bot,
@@ -70,6 +94,8 @@ If commands never appear, the usual cause is the bot being invited **without the
 | `imageGen.js` | renders the pixel-sky banner + bitmap bold text (`@napi-rs/canvas`) |
 | `storage.js` | tiny JSON persistence (`data.json`) |
 | `base pic.jpg` | your pixel-art sky (banner background) |
+| `font.ttf` | DejaVu Sans Mono Bold — the banner font (bundled for portability) |
+| `egg-airlock-discord-vc-manager.json` | Pterodactyl egg for one-click hosting |
 
 ## ✧ customising the look
 
