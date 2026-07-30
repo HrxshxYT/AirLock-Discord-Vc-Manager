@@ -19,7 +19,7 @@ const {
   Client, GatewayIntentBits, Events, PermissionFlagsBits, ChannelType,
   EmbedBuilder, AttachmentBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle,
   ModalBuilder, TextInputBuilder, TextInputStyle, UserSelectMenuBuilder,
-  SlashCommandBuilder, REST, Routes,
+  SlashCommandBuilder, REST, Routes, ActivityType,
 } = require('discord.js');
 
 const storage = require('./storage');
@@ -167,8 +167,19 @@ client.once(Events.ClientReady, async (c) => {
   }
   console.log(`꒰ঌ logged in as ${c.user.tag} ໒꒱ — in ${c.guilds.cache.size} guild(s)`);
   await validateStoredData();
+  updatePresence();
+  setInterval(updatePresence, 5 * 60 * 1000); // refresh the member count every 5 min
   setInterval(runBumpReminders, 30 * 1000);
 });
+
+// "Listening to N members" — total members across every server the bot is in.
+function updatePresence() {
+  if (!client.user) return;
+  const total = client.guilds.cache.reduce((sum, g) => sum + (g.memberCount || 0), 0);
+  client.user.setActivity(`${total.toLocaleString()} members`, {
+    type: ActivityType.Listening,
+  });
+}
 
 // On boot, make sure the channels we remembered still exist. If a hub was
 // deleted, forget it (the admin should re-run /setup). Also prune temp channels
@@ -709,6 +720,7 @@ async function runBumpReminders() {
 
 // ───────────────────────────────────────────── thank-you on join ──
 client.on(Events.GuildCreate, async (guild) => {
+  updatePresence(); // new server -> refresh the member count
   let channel = guild.systemChannel;
   if (!channel || !channel.permissionsFor(guild.members.me)?.has(PermissionFlagsBits.SendMessages)) {
     channel = guild.channels.cache.find(
@@ -727,6 +739,9 @@ client.on(Events.GuildCreate, async (guild) => {
   const file = await bannerAttachment('thank you', '* for adding me *');
   try { await channel.send({ embeds: [embed], files: [file] }); } catch {}
 });
+
+// removed from a server -> refresh the member count
+client.on(Events.GuildDelete, () => updatePresence());
 
 // ───────────────────────────────────────────── run ──
 if (!TOKEN) {
