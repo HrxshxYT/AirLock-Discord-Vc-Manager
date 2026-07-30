@@ -1,22 +1,20 @@
 {
-    "_comment": "Pterodactyl Egg — AirLock Discord VC Manager (discord.js). Import via Admin > Nests > Import Egg.",
+    "_comment": "DO NOT EDIT: FILE GENERATED AUTOMATICALLY BY PTERODACTYL PANEL - PTERODACTYL.IO",
     "meta": {
         "version": "PTDL_v2",
         "update_url": null
     },
-    "exported_at": "2026-07-30T00:00:00+00:00",
-    "name": "AirLock — Discord VC Manager",
-    "author": "contact@hrxshx.com",
-    "description": "꒰ঌ AirLock ໒꒱ — a cute, aesthetic join-to-create Discord voice-channel manager with moderation (kick/ban/quarantine, voice-ban), owner control panel, DISBOARD bump reminders and a pixel-art banner. Built with discord.js v14 + @napi-rs/canvas.",
-    "features": null,
+    "exported_at": "2026-07-30T09:00:00+05:30",
+    "name": "AirLock Egg",
+    "author": "hrishikeshpounraj@gmail.com",
+    "description": "Clones AirLock (a cute join-to-create Discord VC manager + moderation bot) from GitHub, installs dependencies, and starts the bot. discord.js v14 + @napi-rs/canvas. No database required.",
+    "features": [],
     "docker_images": {
-        "Node.js 22": "ghcr.io/pterodactyl/yolks:nodejs_22",
-        "Node.js 21": "ghcr.io/pterodactyl/yolks:nodejs_21",
-        "Node.js 20": "ghcr.io/pterodactyl/yolks:nodejs_20",
-        "Node.js 18": "ghcr.io/pterodactyl/yolks:nodejs_18"
+        "Node.js 22": "ghcr.io/parkervcp/yolks:nodejs_22",
+        "Node.js 24": "ghcr.io/parkervcp/yolks:nodejs_24"
     },
     "file_denylist": [],
-    "startup": "if [[ \"${AUTO_UPDATE}\" == \"1\" ]] && [[ -d .git ]]; then echo \"[AirLock] pulling updates...\"; git pull; fi; if [ ! -d /home/container/node_modules ] || [[ \"${AUTO_UPDATE}\" == \"1\" ]]; then echo \"[AirLock] installing dependencies...\"; npm install --omit=dev; fi; node /home/container/${MAIN_FILE}",
+    "startup": "if [[ \"${AUTO_UPDATE}\" == \"1\" ]]; then echo \"[*] Updating from origin/${GIT_BRANCH} ...\"; git fetch origin \"${GIT_BRANCH}\" && git reset --hard \"origin/${GIT_BRANCH}\" && npm ci --omit=dev; fi; node index.js",
     "config": {
         "files": "{}",
         "startup": "{\r\n    \"done\": \"logged in as\"\r\n}",
@@ -25,15 +23,35 @@
     },
     "scripts": {
         "installation": {
-            "script": "#!/bin/bash\n# ─────────────────────────────────────────────────────────────\n# AirLock — Discord VC Manager · Pterodactyl install script\n# ─────────────────────────────────────────────────────────────\nexport DEBIAN_FRONTEND=noninteractive\n\necho \"[1/4] Installing git...\"\napt-get update -y\napt-get install -y --no-install-recommends git ca-certificates\n\nmkdir -p /mnt/server\ncd /mnt/server\n\nif [ \"${USER_UPLOAD}\" == \"1\" ] || [ \"${USER_UPLOAD}\" == \"true\" ]; then\n    echo \"[2/4] USER_UPLOAD enabled — skipping git clone. Upload your own files to the server.\"\nelse\n    if [ -z \"${GIT_ADDRESS}\" ]; then\n        echo \"[2/4] No GIT_ADDRESS set and USER_UPLOAD is off — nothing to fetch.\"\n    else\n        # normalise the address (allow with or without .git)\n        if [[ \"${GIT_ADDRESS}\" != *.git ]]; then\n            GIT_ADDRESS=\"${GIT_ADDRESS}.git\"\n        fi\n        if [ -d .git ]; then\n            echo \"[2/4] Existing repository found — pulling latest changes...\"\n            git pull\n        else\n            echo \"[2/4] Cloning ${GIT_ADDRESS} (branch ${BRANCH:-main})...\"\n            git clone --depth 1 --branch \"${BRANCH:-main}\" \"${GIT_ADDRESS}\" .\n        fi\n    fi\nfi\n\necho \"[3/4] npm version: $(npm -v) / node version: $(node -v)\"\n\nif [ -f package.json ]; then\n    echo \"[4/4] Installing Node.js dependencies (this can take 1-3 min for canvas)...\"\n    npm install --omit=dev --no-audit --no-fund --loglevel=info --progress=false\nelse\n    echo \"WARNING: no package.json found — did the clone/upload succeed?\"\nfi\n\necho \"-------------------------------------------------------\"\necho \"  AirLock install complete!\"\necho \"  -> Set DISCORD_TOKEN in the server's Startup tab.\"\necho \"  -> Leave GUILD_ID blank for a public (global) bot.\"\necho \"-------------------------------------------------------\"\n",
+            "script": "#!/bin/bash\n# AirLock — Discord VC Manager · installation\n# Install container is Debian bookworm, matching the parkervcp/yolks Node runtime.\nset -euo pipefail\n\napt-get update\napt-get install -y --no-install-recommends git ca-certificates\n\nif [ -z \"${GIT_REPO:-}\" ]; then\n  echo \"[!] GIT_REPO is empty.\"\n  exit 1\nfi\nBRANCH=\"${GIT_BRANCH:-main}\"\n\nmkdir -p /mnt/server\ncd /mnt/server\n\nif [ -d /mnt/server/.git ]; then\n  echo \"[*] Updating existing checkout to origin/${BRANCH} ...\"\n  git remote set-url origin \"${GIT_REPO}\"\n  git fetch origin \"${BRANCH}\"\n  git reset --hard \"origin/${BRANCH}\"\nelse\n  echo \"[*] Cloning ${GIT_REPO} (branch ${BRANCH}) ...\"\n  git clone --depth 1 --single-branch --branch \"${BRANCH}\" \"${GIT_REPO}\" /tmp/repo\n  cp -R /tmp/repo/. /mnt/server/\n  rm -rf /tmp/repo\nfi\n\necho \"[*] Installing dependencies ...\"\nif [ -f package-lock.json ]; then\n  npm ci --omit=dev\nelse\n  npm install --omit=dev\nfi\n\n# Fail loudly rather than letting the panel mark a broken server as \"installed\".\necho \"[*] Verifying install ...\"\ntest -d /mnt/server/node_modules || { echo \"[!] node_modules missing\"; exit 1; }\ntest -d /mnt/server/node_modules/@napi-rs/canvas || { echo \"[!] @napi-rs/canvas missing\"; exit 1; }\ntest -f /mnt/server/index.js || { echo \"[!] index.js missing\"; exit 1; }\ntest -f /mnt/server/font.ttf || echo \"[warn] font.ttf missing — banner text may not render\"\n\necho \"[*] Install complete.\"",
             "container": "node:22-bookworm-slim",
             "entrypoint": "bash"
         }
     },
     "variables": [
         {
+            "name": "Git Repository",
+            "description": "HTTPS URL of the bot's repository (must be public).",
+            "env_variable": "GIT_REPO",
+            "default_value": "https://github.com/HrxshxYT/AirLock-Discord-Vc-Manager.git",
+            "user_viewable": true,
+            "user_editable": false,
+            "rules": "required|string|url",
+            "field_type": "text"
+        },
+        {
+            "name": "Git Branch",
+            "description": "Branch to deploy.",
+            "env_variable": "GIT_BRANCH",
+            "default_value": "main",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|string|max:64",
+            "field_type": "text"
+        },
+        {
             "name": "Discord Bot Token",
-            "description": "Your bot token from the Discord Developer Portal (Bot > Reset Token). Keep this secret!",
+            "description": "Bot token from the Discord Developer Portal. Keep secret.",
             "env_variable": "DISCORD_TOKEN",
             "default_value": "",
             "user_viewable": true,
@@ -42,8 +60,8 @@
             "field_type": "text"
         },
         {
-            "name": "Guild ID (optional)",
-            "description": "A server ID for INSTANT slash-command registration during testing. Leave BLANK for a public bot (global sync, can take up to ~1 hour to appear).",
+            "name": "Guild ID",
+            "description": "Optional. A server ID for INSTANT slash-command registration. Leave blank for a public bot (global sync, can take up to ~1 hour to appear).",
             "env_variable": "GUILD_ID",
             "default_value": "",
             "user_viewable": true,
@@ -52,53 +70,13 @@
             "field_type": "text"
         },
         {
-            "name": "Git Repository",
-            "description": "The git repo the bot code is pulled from on install/update. Change this if you fork it.",
-            "env_variable": "GIT_ADDRESS",
-            "default_value": "https://github.com/HrxshxYT/AirLock-Discord-Vc-Manager",
-            "user_viewable": true,
-            "user_editable": true,
-            "rules": "nullable|string",
-            "field_type": "text"
-        },
-        {
-            "name": "Git Branch",
-            "description": "Which branch to clone/pull.",
-            "env_variable": "BRANCH",
-            "default_value": "main",
-            "user_viewable": true,
-            "user_editable": true,
-            "rules": "required|string",
-            "field_type": "text"
-        },
-        {
-            "name": "User Uploaded Files",
-            "description": "Set to 1 if you want to upload your own files instead of cloning from git. 0 = clone from the repo above.",
-            "env_variable": "USER_UPLOAD",
+            "name": "Auto Update On Boot",
+            "description": "1 = git reset to the latest branch commit and reinstall dependencies on every start. Slows boot; leave at 0 and use Reinstall instead.",
+            "env_variable": "AUTO_UPDATE",
             "default_value": "0",
             "user_viewable": true,
             "user_editable": true,
-            "rules": "required|boolean",
-            "field_type": "text"
-        },
-        {
-            "name": "Auto Update",
-            "description": "Set to 1 to git-pull and reinstall dependencies on every restart. 0 = start faster, update manually.",
-            "env_variable": "AUTO_UPDATE",
-            "default_value": "1",
-            "user_viewable": true,
-            "user_editable": true,
-            "rules": "required|boolean",
-            "field_type": "text"
-        },
-        {
-            "name": "Main File",
-            "description": "The entry file the bot runs.",
-            "env_variable": "MAIN_FILE",
-            "default_value": "index.js",
-            "user_viewable": true,
-            "user_editable": true,
-            "rules": "required|string",
+            "rules": "required|in:0,1",
             "field_type": "text"
         }
     ]

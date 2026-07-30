@@ -65,13 +65,11 @@ A ready-to-import egg is included: **`egg-airlock-discord-vc-manager.json`**.
 
 | variable | default | what it does |
 | --- | --- | --- |
+| `GIT_REPO` | this repo | clone source (locked; change only if you fork) |
+| `GIT_BRANCH` | `main` | branch to deploy |
 | `DISCORD_TOKEN` | *(blank)* | **required** — your bot token |
-| `GUILD_ID` | *(blank)* | set a server ID for instant command sync; blank = global/public |
-| `GIT_ADDRESS` | this repo | where the code is pulled from (change if you fork) |
-| `BRANCH` | `main` | branch to clone/pull |
-| `USER_UPLOAD` | `0` | `1` = upload your own files instead of cloning |
-| `AUTO_UPDATE` | `1` | `1` = git-pull + reinstall on every restart |
-| `MAIN_FILE` | `index.js` | entry file |
+| `GUILD_ID` | *(blank)* | server ID for instant command sync; blank = global/public |
+| `AUTO_UPDATE` | `0` | `1` = git-reset to latest + reinstall on every boot |
 
 > The banner font (`font.ttf`, DejaVu Sans Mono Bold) is bundled so the image renders
 > correctly on the minimal Pterodactyl containers — no system fonts required.
