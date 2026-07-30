@@ -39,6 +39,16 @@ function setGuildConfig(guildId, jtcChannel, category) {
 function getGuildConfig(guildId) {
   return read().guilds[guildId] || null;
 }
+function clearGuildConfig(guildId) {
+  const d = read();
+  if (d.guilds[guildId]) { delete d.guilds[guildId]; write(d); }
+}
+function allGuildConfigs() {
+  return read().guilds; // { guildId: { jtcChannel, category } }
+}
+function allTempIds() {
+  return Object.keys(read().temp);
+}
 
 // ---- live temp channels ----
 function addTemp(channelId, ownerId, guildId) {
@@ -134,7 +144,7 @@ function isQuarantined(guildId, userId) {
 }
 
 module.exports = {
-  setGuildConfig, getGuildConfig,
+  setGuildConfig, getGuildConfig, clearGuildConfig, allGuildConfigs, allTempIds,
   addTemp, getTemp, isTemp, setOwner, setLocked, removeTemp,
   addBlock, removeBlock, getBlocks,
   setBump, dueBumps, markBumpDone,

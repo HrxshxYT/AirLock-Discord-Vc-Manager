@@ -166,7 +166,46 @@ client.once(Events.ClientReady, async (c) => {
     console.error('command sync failed:', err);
   }
   console.log(`꒰ঌ logged in as ${c.user.tag} ໒꒱ — in ${c.guilds.cache.size} guild(s)`);
+  await validateStoredData();
   setInterval(runBumpReminders, 30 * 1000);
+});
+
+// On boot, make sure the channels we remembered still exist. If a hub was
+// deleted, forget it (the admin should re-run /setup). Also prune temp channels
+// that no longer exist so cleanup logic doesn't reference ghosts.
+async function validateStoredData() {
+  const configs = storage.allGuildConfigs();
+  for (const [guildId, cfg] of Object.entries(configs)) {
+    const hub = await client.channels.fetch(cfg.jtcChannel).catch(() => null);
+    if (!hub) {
+      storage.clearGuildConfig(guildId);
+      console.warn(`[setup] hub channel ${cfg.jtcChannel} for guild ${guildId} is gone — cleared config. Re-run /setup there.`);
+    } else {
+      console.log(`[setup] hub OK for guild ${guildId}: #${hub.name} (${hub.id})`);
+    }
+  }
+  for (const channelId of storage.allTempIds()) {
+    const ch = await client.channels.fetch(channelId).catch(() => null);
+    if (!ch) {
+      storage.removeTemp(channelId);
+      console.warn(`[cleanup] temp channel ${channelId} no longer exists — removed from data.`);
+    }
+  }
+}
+
+// Real-time self-heal: if a remembered hub (or a temp channel) is deleted in
+// Discord, forget it immediately so stale data never lingers.
+client.on(Events.ChannelDelete, (channel) => {
+  const configs = storage.allGuildConfigs();
+  for (const [guildId, cfg] of Object.entries(configs)) {
+    if (cfg.jtcChannel === channel.id) {
+      storage.clearGuildConfig(guildId);
+      console.warn(`[setup] hub #${channel.name} was deleted — cleared config for guild ${guildId}.`);
+    }
+  }
+  if (storage.isTemp(channel.id)) {
+    storage.removeTemp(channel.id);
+  }
 });
 
 // ───────────────────────────────────────────── voice: join-to-create ──
@@ -183,6 +222,7 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
   // (2) join-to-create hub
   const cfg = storage.getGuildConfig(guild.id);
   if (cfg && newState.channelId && newState.channelId === cfg.jtcChannel) {
+    console.log(`[jtc] ${member.user.tag} joined the hub in guild ${guild.id} — spawning...`);
     await spawnChannel(member, guild, cfg);
   }
 
@@ -195,12 +235,20 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
 });
 
 async function spawnChannel(member, guild, cfg) {
+  // if the stored category was deleted, create the vc without a parent rather
+  // than throwing on an invalid parent id.
+  let parent = null;
+  if (cfg.category) {
+    const cat = await client.channels.fetch(cfg.category).catch(() => null);
+    parent = cat ? cat.id : null;
+  }
+
   let ch;
   try {
     ch = await guild.channels.create({
       name: `꒰ঌ ${member.displayName}'s vc ໒꒱`.slice(0, 100),
       type: ChannelType.GuildVoice,
-      parent: cfg.category || null,
+      parent,
       permissionOverwrites: [
         {
           id: member.id,
@@ -212,17 +260,30 @@ async function spawnChannel(member, guild, cfg) {
       ],
       reason: 'join-to-create',
     });
-    await member.voice.setChannel(ch, 'moved to their new cutie vc');
   } catch (err) {
-    console.error('spawn failed:', err.message);
+    console.error('[jtc] channel create FAILED:', err.message,
+      '\n       -> the bot likely lacks the "Manage Channels" permission.');
     return;
   }
+
+  // move them in; if this fails (usually missing "Move Members"), don't leave an
+  // orphan channel sitting around — delete it and log the real reason.
+  try {
+    await member.voice.setChannel(ch, 'moved to their new cutie vc');
+  } catch (err) {
+    console.error('[jtc] move FAILED:', err.message,
+      '\n       -> the bot likely lacks the "Move Members" permission. Deleting the orphaned channel.');
+    await ch.delete('could not move member — cleaning up').catch(() => {});
+    return;
+  }
+
   storage.addTemp(ch.id, member.id, guild.id);
+  console.log(`[jtc] created ${ch.id} for ${member.user.tag}`);
   try {
     const { embed, file } = await panelEmbed(ch, member.user);
     await ch.send({ content: `<@${member.id}>`, embeds: [embed], files: [file], components: controlPanelRows() });
   } catch (err) {
-    console.error('panel send failed:', err.message);
+    console.error('[jtc] panel send failed (channel still works):', err.message);
   }
 }
 
@@ -261,9 +322,32 @@ async function cmdSetup(interaction) {
   }
   await interaction.deferReply({ ephemeral: true });
   const guild = interaction.guild;
-  const category = await guild.channels.create({ name: CATEGORY_NAME, type: ChannelType.GuildCategory, reason: 'cutie vc setup' });
-  const hub = await guild.channels.create({ name: HUB_NAME, type: ChannelType.GuildVoice, parent: category.id, reason: 'cutie vc hub' });
+
+  // idempotent: if we already remember a hub here and it still exists, reuse it
+  // instead of piling up duplicate categories.
+  const existing = storage.getGuildConfig(guild.id);
+  if (existing) {
+    const stillThere = await client.channels.fetch(existing.jtcChannel).catch(() => null);
+    if (stillThere) {
+      return interaction.editReply({
+        content: `✧ already set up! join **${stillThere.name}** to make your vc ♡\n(delete that channel and run /setup again if you want a fresh one.)`,
+      });
+    }
+    storage.clearGuildConfig(guild.id); // stored hub was deleted — rebuild below
+  }
+
+  let category, hub;
+  try {
+    category = await guild.channels.create({ name: CATEGORY_NAME, type: ChannelType.GuildCategory, reason: 'cutie vc setup' });
+    hub = await guild.channels.create({ name: HUB_NAME, type: ChannelType.GuildVoice, parent: category.id, reason: 'cutie vc hub' });
+  } catch (err) {
+    console.error('[setup] failed to create channels:', err.message);
+    return interaction.editReply({
+      content: "i couldn't create the channels ｡ﾟ — make sure i have the **Manage Channels** permission and my role is high enough.",
+    });
+  }
   storage.setGuildConfig(guild.id, hub.id, category.id);
+  console.log(`[setup] guild ${guild.id}: hub ${hub.id}, category ${category.id}`);
 
   const embed = new EmbedBuilder()
     .setTitle('✧ cutie vc is ready! ✧')
