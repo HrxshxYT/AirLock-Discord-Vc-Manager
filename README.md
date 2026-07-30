@@ -101,3 +101,8 @@ If commands never appear, the usual cause is the bot being invited **without the
 - **Bitmap font:** drop a `font.ttf` next to `imageGen.js` and it's used automatically
 - **Chunkiness:** tweak `PIXEL_SCALE` in `imageGen.js`
 - **Colors / names:** `EMBED_COLOR`, `HUB_NAME`, `CATEGORY_NAME` near the top of `index.js`
+
+## ✧ legal
+
+- [Terms of Service](./TERMS.md)
+- [Privacy Policy](./PRIVACY.md) — AirLock stores only Discord IDs; no messages or voice audio.
