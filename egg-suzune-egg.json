@@ -1,0 +1,193 @@
+{
+    "_comment": "DO NOT EDIT: FILE GENERATED AUTOMATICALLY BY PTERODACTYL PANEL - PTERODACTYL.IO",
+    "meta": {
+        "version": "PTDL_v2",
+        "update_url": null
+    },
+    "exported_at": "2026-07-30T08:37:27+05:30",
+    "name": "Suzune Egg",
+    "author": "hrishikeshpounraj@gmail.com",
+    "description": "Clones the bot from GitHub, installs dependencies, generates the Prisma client, and boots the ShardingManager. Optionally applies database migrations and registers slash commands on start. Requires an external PostgreSQL database.",
+    "features": [],
+    "docker_images": {
+        "Node.js 22": "ghcr.io\/parkervcp\/yolks:nodejs_22",
+        "Node.js 24": "ghcr.io\/parkervcp\/yolks:nodejs_24"
+    },
+    "file_denylist": [],
+    "startup": "if [[ \"${AUTO_UPDATE}\" == \"1\" ]]; then echo \"[*] Updating from origin\/${GIT_BRANCH} ...\"; git fetch origin \"${GIT_BRANCH}\" && git reset --hard \"origin\/${GIT_BRANCH}\" && npm ci; fi; if [[ \"${RUN_MIGRATIONS}\" == \"1\" ]]; then echo \"[*] Applying migrations ...\"; npx prisma migrate deploy || exit 1; fi; if [[ \"${REGISTER_COMMANDS}\" == \"1\" ]]; then echo \"[*] Registering slash commands ...\"; node src\/scripts\/register-commands.js || exit 1; fi; node src\/index.js",
+    "config": {
+        "files": "{}",
+        "startup": "{\r\n    \"done\": \"Launched shard\"\r\n}",
+        "logs": "{}",
+        "stop": "^C"
+    },
+    "scripts": {
+        "installation": {
+            "script": "#!\/bin\/bash\r\n# Joint Jagadeesan \u2014 installation\r\n# Install container is Debian bookworm, matching the parkervcp\/yolks Node runtime,\r\n# so the Prisma engine binaries generated here are the right ones at boot.\r\nset -euo pipefail\r\n\r\napt-get update\r\n# build-essential + python3 let node-gyp compile the `re2` native addon (automod's\r\n# regex engine). re2's install downloads a prebuilt when available and falls back to\r\n# a source build; without a toolchain that fallback fails and re2.node is missing at boot.\r\napt-get install -y --no-install-recommends git ca-certificates openssl build-essential python3\r\n\r\nif [ -z \"${GIT_REPO:-}\" ]; then\r\n  echo \"[!] GIT_REPO is empty.\"\r\n  exit 1\r\nfi\r\nBRANCH=\"${GIT_BRANCH:-main}\"\r\n\r\nmkdir -p \/mnt\/server\r\ncd \/mnt\/server\r\n\r\nif [ -d \/mnt\/server\/.git ]; then\r\n  echo \"[*] Updating existing checkout to origin\/${BRANCH} ...\"\r\n  git remote set-url origin \"${GIT_REPO}\"\r\n  git fetch origin \"${BRANCH}\"\r\n  git reset --hard \"origin\/${BRANCH}\"\r\nelse\r\n  echo \"[*] Cloning ${GIT_REPO} (branch ${BRANCH}) ...\"\r\n  git clone --depth 1 --single-branch --branch \"${BRANCH}\" \"${GIT_REPO}\" \/tmp\/repo\r\n  cp -R \/tmp\/repo\/. \/mnt\/server\/\r\n  rm -rf \/tmp\/repo\r\nfi\r\n\r\necho \"[*] Installing dependencies ...\"\r\n# A full install is required: the `prisma` CLI is a devDependency, and it is needed\r\n# both by the postinstall hook (prisma generate) and by `prisma migrate deploy` at\r\n# boot. Do NOT change this to --omit=dev unless prisma moves to dependencies.\r\nif [ -f package-lock.json ]; then\r\n  npm ci\r\nelse\r\n  npm install\r\nfi\r\n\r\n# re2's install prefers a downloaded prebuilt and only source-builds on the ||\r\n# fallback; if that download 'succeeds' as a no-op the binary can be missing. Force a\r\n# source build when it's absent so re2.node always exists (needs the toolchain above).\r\nif [ ! -f \/mnt\/server\/node_modules\/re2\/build\/Release\/re2.node ]; then\r\n  echo \"[*] Building re2 native addon from source ...\"\r\n  ( cd \/mnt\/server\/node_modules\/re2 && npm run rebuild )\r\nfi\r\n\r\n# Fail loudly rather than letting the panel mark a broken server as \"installed\".\r\necho \"[*] Verifying install ...\"\r\ntest -d \/mnt\/server\/node_modules || { echo \"[!] node_modules missing\"; exit 1; }\r\ntest -d \/mnt\/server\/node_modules\/.prisma\/client || { echo \"[!] Prisma client was not generated\"; exit 1; }\r\ntest -f \/mnt\/server\/node_modules\/re2\/build\/Release\/re2.node || { echo \"[!] re2 native binary missing (build failed)\"; exit 1; }\r\ntest -f \/mnt\/server\/src\/index.js || { echo \"[!] src\/index.js missing\"; exit 1; }\r\n\r\necho \"[*] Install complete.\"",
+            "container": "node:22-bookworm-slim",
+            "entrypoint": "bash"
+        }
+    },
+    "variables": [
+        {
+            "name": "Git Repository",
+            "description": "HTTPS URL of the bot's repository (must be public).",
+            "env_variable": "GIT_REPO",
+            "default_value": "https:\/\/github.com\/HrxshxYT\/Suzune.git",
+            "user_viewable": true,
+            "user_editable": false,
+            "rules": "required|string|url",
+            "field_type": "text"
+        },
+        {
+            "name": "Git Branch",
+            "description": "Branch to deploy.",
+            "env_variable": "GIT_BRANCH",
+            "default_value": "main",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|string|max:64",
+            "field_type": "text"
+        },
+        {
+            "name": "Discord Bot Token",
+            "description": "Bot token from the Discord Developer Portal. Keep secret.",
+            "env_variable": "DISCORD_TOKEN",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|string",
+            "field_type": "text"
+        },
+        {
+            "name": "Discord Client ID",
+            "description": "Application ID from the Discord Developer Portal.",
+            "env_variable": "DISCORD_CLIENT_ID",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|string",
+            "field_type": "text"
+        },
+        {
+            "name": "Database URL",
+            "description": "PostgreSQL connection string, e.g. postgresql:\/\/user:pass@host:5432\/dbname?sslmode=disable. Percent-encode any special characters in the password.",
+            "env_variable": "DATABASE_URL",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|string|starts_with:postgresql:\/\/,postgres:\/\/",
+            "field_type": "text"
+        },
+        {
+            "name": "Run Migrations On Boot",
+            "description": "1 = run `prisma migrate deploy` before starting. Boot aborts if migrations fail.",
+            "env_variable": "RUN_MIGRATIONS",
+            "default_value": "1",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|in:0,1",
+            "field_type": "text"
+        },
+        {
+            "name": "Register Slash Commands On Boot",
+            "description": "1 = run src\/scripts\/register-commands.js before starting. Set to 1 after changing commands, then back to 0 \u2014 re-registering on every boot wastes Discord API quota.",
+            "env_variable": "REGISTER_COMMANDS",
+            "default_value": "0",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|in:0,1",
+            "field_type": "text"
+        },
+        {
+            "name": "Auto Update On Boot",
+            "description": "1 = git reset to the latest branch commit and reinstall dependencies on every start. Slows boot considerably; leave at 0 and use Reinstall instead.",
+            "env_variable": "AUTO_UPDATE",
+            "default_value": "0",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|in:0,1",
+            "field_type": "text"
+        },
+        {
+            "name": "Node Environment",
+            "description": "development, production, or test.",
+            "env_variable": "NODE_ENV",
+            "default_value": "production",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|in:development,production,test",
+            "field_type": "text"
+        },
+        {
+            "name": "Shard Count",
+            "description": "\"auto\" or a positive integer. Deliberately not named SHARD_COUNT \u2014 discord.js reads that name internally and it would break a standalone client.",
+            "env_variable": "BOT_SHARD_COUNT",
+            "default_value": "auto",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|string",
+            "field_type": "text"
+        },
+        {
+            "name": "Dev Guild ID",
+            "description": "Optional. Guild ID for instant guild-scoped command registration during development.",
+            "env_variable": "DEV_GUILD_ID",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "nullable|string",
+            "field_type": "text"
+        },
+        {
+            "name": "Log Level",
+            "description": "fatal, error, warn, info, debug, or trace.",
+            "env_variable": "LOG_LEVEL",
+            "default_value": "info",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|in:fatal,error,warn,info,debug,trace",
+            "field_type": "text"
+        },
+        {
+            "name": "Lavalink Host",
+            "description": "",
+            "env_variable": "LAVALINK_HOST",
+            "default_value": "169.58.20.12",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "nullable|string",
+            "field_type": "text"
+        },
+        {
+            "name": "Lavalink Port",
+            "description": "",
+            "env_variable": "LAVALINK_PORT",
+            "default_value": "2200",
+            "user_viewable": false,
+            "user_editable": false,
+            "rules": "nullable|integer",
+            "field_type": "text"
+        },
+        {
+            "name": "Lavalink Password",
+            "description": "",
+            "env_variable": "LAVALINK_PASSWORD",
+            "default_value": "youshallnotpass",
+            "user_viewable": false,
+            "user_editable": true,
+            "rules": "nullable|string",
+            "field_type": "text"
+        },
+        {
+            "name": "Lavalink Secure",
+            "description": "",
+            "env_variable": "LAVALINK_SECURE",
+            "default_value": "false",
+            "user_viewable": false,
+            "user_editable": true,
+            "rules": "nullable|string",
+            "field_type": "text"
+        }
+    ]
+}

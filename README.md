@@ -1,4 +1,4 @@
-# ꒰ঌ cutie vc manager ໒꒱ — discord.js edition
+# ꒰ঌ AirLock manager ໒꒱ — discord.js edition
 
 A soft, pastel **join-to-create** voice manager + light moderation bot, written in
 **discord.js v14**. Join one hub channel and the bot makes your own private voice

@@ -1,7 +1,7 @@
 {
-  "name": "cutie-vc-bot",
+  "name": "airlock",
   "version": "1.0.0",
-  "description": "꒰ঌ cutie vc manager ໒꒱ — aesthetic join-to-create voice + moderation bot",
+  "description": "꒰ঌ AirLock manager ໒꒱ — aesthetic join-to-create voice + moderation bot",
   "type": "commonjs",
   "main": "index.js",
   "scripts": {

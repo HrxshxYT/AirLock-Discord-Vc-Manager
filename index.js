@@ -1,4 +1,4 @@
-// ꒰ঌ cutie vc manager ໒꒱  (discord.js v14)
+// ꒰ঌ AirLock manager ໒꒱  (discord.js v14)
 // A soft, aesthetic join-to-create voice manager + light moderation bot.
 //
 // /setup            (admin)  build the join-to-create hub
@@ -29,7 +29,7 @@ const { makeBanner } = require('./imageGen');
 const TOKEN = process.env.DISCORD_TOKEN || '';
 const GUILD_ID = (process.env.GUILD_ID || '').trim(); // set for instant sync in one server
 const HUB_NAME = "꒰ঌ join to create ໒꒱";
-const CATEGORY_NAME = "꒰ঌ cutie voice ໒꒱";
+const CATEGORY_NAME = "꒰ঌ AirLock voice ໒꒱";
 const QUARANTINE_ROLE_NAME = "꒰ঌ quarantined ໒꒱";
 const EMBED_COLOR = 0xf7b5d3;
 const DISBOARD_ID = '302050872383242240';
@@ -104,7 +104,7 @@ async function panelEmbed(channel, owner) {
       },
     )
     .setImage('attachment://banner.png')
-    .setFooter({ text: '꒰ঌ cutie vc ໒꒱ · be kind, stay cozy' });
+    .setFooter({ text: '꒰ঌ AirLock ໒꒱ · be kind, stay cozy' });
   const file = await bannerAttachment(channel.name, '* your cozy little vc *');
   return { embed, file };
 }
@@ -146,7 +146,7 @@ const commands = [
     .setDescription('♡ release a member from quarantine (needs Manage Roles)')
     .addUserOption((o) => o.setName('user').setDescription('who to release').setRequired(true)),
   new SlashCommandBuilder().setName('help')
-    .setDescription('✧ show everything cutie vc can do'),
+    .setDescription('✧ show everything AirLock can do'),
 ].map((c) => c.toJSON());
 
 // ───────────────────────────────────────────── ready + sync ──
@@ -241,7 +241,7 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
   const left = oldState.channel;
   if (left && storage.isTemp(left.id) && left.members.size === 0) {
     storage.removeTemp(left.id);
-    try { await left.delete('cutie vc empty'); } catch {}
+    try { await left.delete('AirLock channel empty'); } catch {}
   }
 });
 
@@ -280,7 +280,7 @@ async function spawnChannel(member, guild, cfg) {
   // move them in; if this fails (usually missing "Move Members"), don't leave an
   // orphan channel sitting around — delete it and log the real reason.
   try {
-    await member.voice.setChannel(ch, 'moved to their new cutie vc');
+    await member.voice.setChannel(ch, 'moved to their new AirLock channel');
   } catch (err) {
     console.error('[jtc] move FAILED:', err.message,
       '\n       -> the bot likely lacks the "Move Members" permission. Deleting the orphaned channel.');
@@ -349,8 +349,8 @@ async function cmdSetup(interaction) {
 
   let category, hub;
   try {
-    category = await guild.channels.create({ name: CATEGORY_NAME, type: ChannelType.GuildCategory, reason: 'cutie vc setup' });
-    hub = await guild.channels.create({ name: HUB_NAME, type: ChannelType.GuildVoice, parent: category.id, reason: 'cutie vc hub' });
+    category = await guild.channels.create({ name: CATEGORY_NAME, type: ChannelType.GuildCategory, reason: 'AirLock setup' });
+    hub = await guild.channels.create({ name: HUB_NAME, type: ChannelType.GuildVoice, parent: category.id, reason: 'AirLock hub' });
   } catch (err) {
     console.error('[setup] failed to create channels:', err.message);
     return interaction.editReply({
@@ -361,7 +361,7 @@ async function cmdSetup(interaction) {
   console.log(`[setup] guild ${guild.id}: hub ${hub.id}, category ${category.id}`);
 
   const embed = new EmbedBuilder()
-    .setTitle('✧ cutie vc is ready! ✧')
+    .setTitle('✧ AirLock is ready! ✧')
     .setDescription(
       `join **${hub.name}** and i'll spin up your own private voice channel + a control panel ♡\n\n` +
       '**owner controls:** lock · limit · rename · status · permit · reject · claim\n' +
@@ -369,15 +369,15 @@ async function cmdSetup(interaction) {
       '**`/block @user`** — admins: voice-ban someone\n')
     .setColor(EMBED_COLOR)
     .setImage('attachment://banner.png')
-    .setFooter({ text: '꒰ঌ cutie vc ໒꒱' });
-  const file = await bannerAttachment('cutie vc', '* join to create *');
+    .setFooter({ text: '꒰ঌ AirLock ໒꒱' });
+  const file = await bannerAttachment('AirLock', '* join to create *');
   await interaction.editReply({ embeds: [embed], files: [file] });
 }
 
 async function cmdAllow(interaction) {
   const cid = interaction.channelId;
   if (!storage.isTemp(cid)) {
-    return interaction.reply({ content: "use this **inside your own cutie vc's chat** ♡", ephemeral: true });
+    return interaction.reply({ content: "use this **inside your own AirLock channel's chat** ♡", ephemeral: true });
   }
   if (!isOwner(cid, interaction.user.id)) {
     return interaction.reply({ content: 'only the channel owner can permit people ♡', ephemeral: true });
@@ -455,7 +455,7 @@ async function ensureQuarantineRole(guild) {
   let role = roleId ? guild.roles.cache.get(roleId) : null;
   if (role) return role;
   try {
-    role = await guild.roles.create({ name: QUARANTINE_ROLE_NAME, reason: 'cutie vc quarantine role' });
+    role = await guild.roles.create({ name: QUARANTINE_ROLE_NAME, reason: 'AirLock quarantine role' });
   } catch { return null; }
   storage.setQuarantineRole(guild.id, role.id);
   const deny = {
@@ -524,7 +524,7 @@ async function cmdUnquarantine(interaction) {
 
 async function cmdHelp(interaction) {
   const embed = new EmbedBuilder()
-    .setTitle('✧ cutie vc · help ✧')
+    .setTitle('✧ AirLock · help ✧')
     .setDescription('everything i can do, all in one cozy place ♡\n​')
     .setColor(EMBED_COLOR)
     .addFields(
@@ -553,8 +553,8 @@ async function cmdHelp(interaction) {
       },
     )
     .setImage('attachment://banner.png')
-    .setFooter({ text: '꒰ঌ cutie vc ໒꒱ · be kind, stay cozy' });
-  const file = await bannerAttachment('cutie vc', '* help menu *');
+    .setFooter({ text: '꒰ঌ AirLock ໒꒱ · be kind, stay cozy' });
+  const file = await bannerAttachment('AirLock', '* help menu *');
   return interaction.reply({ embeds: [embed], files: [file] });
 }
 
@@ -562,7 +562,7 @@ async function cmdHelp(interaction) {
 async function panelGuard(interaction) {
   const cid = interaction.channelId;
   if (!storage.isTemp(cid)) {
-    await interaction.reply({ content: "this isn't an active cutie vc anymore ♡", ephemeral: true });
+    await interaction.reply({ content: "this isn't an active AirLock channel anymore ♡", ephemeral: true });
     return false;
   }
   if (!isOwner(cid, interaction.user.id)) {
@@ -577,7 +577,7 @@ async function onButton(interaction) {
   const ch = interaction.channel;
 
   if (id === 'vc:claim') {
-    if (!storage.isTemp(ch.id)) return interaction.reply({ content: "this isn't an active cutie vc ♡", ephemeral: true });
+    if (!storage.isTemp(ch.id)) return interaction.reply({ content: "this isn't an active AirLock channel ♡", ephemeral: true });
     const members = ch.members;
     const current = storage.getTemp(ch.id).owner;
     if (members.has(String(current))) return interaction.reply({ content: "the owner is still here — you can't claim it ♡", ephemeral: true });
@@ -632,7 +632,7 @@ async function onButton(interaction) {
   if (id === 'vc:delete') {
     await interaction.reply({ content: 'closing your channel… ♡', ephemeral: true });
     storage.removeTemp(ch.id);
-    try { await ch.delete('owner closed their cutie vc'); } catch {}
+    try { await ch.delete('owner closed their AirLock channel'); } catch {}
   }
 }
 
@@ -687,7 +687,7 @@ async function onSelect(interaction) {
       if (isOwner(ch.id, user.id)) continue;
       await ch.permissionOverwrites.edit(user.id, { Connect: false });
       const m = await interaction.guild.members.fetch(user.id).catch(() => null);
-      if (m?.voice?.channel?.id === ch.id) { try { await m.voice.disconnect('rejected from cutie vc'); } catch {} }
+      if (m?.voice?.channel?.id === ch.id) { try { await m.voice.disconnect('rejected from AirLock channel'); } catch {} }
       names.push(`<@${user.id}>`);
     }
     return interaction.update({ content: `➖ removed & blocked from this vc: ${names.join(', ') || 'nobody'} ♡`, components: [] });
@@ -713,7 +713,7 @@ async function runBumpReminders() {
       .setTitle('🔔 bump time! ♡')
       .setDescription(`${who} it's been 2 hours — the server can be bumped again ✧\nrun **/bump** to keep us climbing the list ~`)
       .setColor(EMBED_COLOR)
-      .setFooter({ text: '꒰ঌ cutie vc ໒꒱' });
+      .setFooter({ text: '꒰ঌ AirLock ໒꒱' });
     try { await channel.send({ content: who, embeds: [embed] }); } catch {}
   }
 }
@@ -728,14 +728,14 @@ client.on(Events.GuildCreate, async (guild) => {
   }
   if (!channel) return;
   const embed = new EmbedBuilder()
-    .setTitle('✧ thank you for adding cutie vc! ✧')
+    .setTitle('✧ thank you for adding AirLock! ✧')
     .setDescription(
       "hi hi~ i'm your soft little voice + moderation helper ♡\n\n" +
       '**to get started:** an admin runs **/setup** to build the join-to-create hub, then everyone can hop in and make their own vc ✧\n\n' +
       'type **/help** any time to see everything i can do ~')
     .setColor(EMBED_COLOR)
     .setImage('attachment://banner.png')
-    .setFooter({ text: '꒰ঌ cutie vc ໒꒱ · be kind, stay cozy' });
+    .setFooter({ text: '꒰ঌ AirLock ໒꒱ · be kind, stay cozy' });
   const file = await bannerAttachment('thank you', '* for adding me *');
   try { await channel.send({ embeds: [embed], files: [file] }); } catch {}
 });
