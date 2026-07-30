@@ -23,7 +23,7 @@ const {
 } = require('discord.js');
 
 const storage = require('./storage');
-const { makeBanner, makeHelpCard } = require('./imageGen');
+const { makeBanner } = require('./imageGen');
 
 // ───────────────────────────────────────────── config ──
 const TOKEN = process.env.DISCORD_TOKEN || '';
@@ -522,41 +522,40 @@ async function cmdUnquarantine(interaction) {
   return interaction.editReply({ content: `♡ <@${target.id}> has been released from quarantine.` });
 }
 
-// command list for the generated help card (monospace, so the columns align)
-const HELP_SECTIONS = [
-  { name: 'VOICE', lines: [
-    '/setup             build the join-to-create hub  (admin)',
-    'join the hub       get your own vc + control panel',
-    '/allow @user       let a friend into your vc  (owner)',
-    'panel              lock, limit, rename, status, permit,',
-    '                   reject, claim, delete',
-  ] },
-  { name: 'MODERATION', lines: [
-    '/kick @user        remove a member       (Kick Members)',
-    '/ban  @user        ban a member          (Ban Members)',
-    '/quarantine @user  isolate someone       (Manage Roles)',
-    '/unquarantine      release them',
-    '/block @user       voice-ban  ·  /unblock  lift it',
-  ] },
-  { name: 'EXTRAS', lines: [
-    'bump reminders     pings 2h after each DISBOARD bump',
-    '/help              this menu',
-  ] },
-];
-
 async function cmdHelp(interaction) {
-  await interaction.deferReply();
-  const buf = await makeHelpCard({
-    title: 'AIRLOCK',
-    subtitle: '* help menu *',
-    sections: HELP_SECTIONS,
-  });
-  const file = new AttachmentBuilder(buf, { name: 'help.png' });
   const embed = new EmbedBuilder()
+    .setTitle('✧ cutie vc · help ✧')
+    .setDescription('everything i can do, all in one cozy place ♡\n​')
     .setColor(EMBED_COLOR)
-    .setImage('attachment://help.png')
-    .setFooter({ text: '꒰ঌ AirLock ໒꒱ · be kind, stay cozy' });
-  return interaction.editReply({ embeds: [embed], files: [file] });
+    .addFields(
+      {
+        name: '🎀 voice channels',
+        value:
+          '`/setup` · build the join-to-create hub *(admin)*\n' +
+          'join the hub · get your own vc + control panel\n' +
+          '`/allow @user` · let a friend into your vc *(owner)*\n' +
+          '**panel:** lock · limit · rename · status · permit · reject · claim · delete',
+      },
+      {
+        name: '🛡️ moderation',
+        value:
+          '`/kick @user [reason]` · *(Kick Members)*\n' +
+          '`/ban @user [reason] [delete_days]` · *(Ban Members)*\n' +
+          '`/quarantine @user [reason]` · isolate someone *(Manage Roles)*\n' +
+          '`/unquarantine @user` · release them\n' +
+          '`/block @user` · voice-ban · `/unblock @user` · lift it *(admin)*',
+      },
+      {
+        name: '🔔 extras',
+        value:
+          'auto **bump reminders** — i ping the bumper 2h after each DISBOARD bump\n' +
+          '`/help` · this menu',
+      },
+    )
+    .setImage('attachment://banner.png')
+    .setFooter({ text: '꒰ঌ cutie vc ໒꒱ · be kind, stay cozy' });
+  const file = await bannerAttachment('cutie vc', '* help menu *');
+  return interaction.reply({ embeds: [embed], files: [file] });
 }
 
 // ---- panel buttons ----
