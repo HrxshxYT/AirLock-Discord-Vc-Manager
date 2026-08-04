@@ -35,7 +35,7 @@ const EMBED_COLOR = 0xf7b5d3;
 const DISBOARD_ID = '302050872383242240';
 const BUMP_COOLDOWN = 2 * 60 * 60 * 1000; // ms
 
-// /moveloop state — only one bounce loop may run at a time (per process).
+// /bounce state — only one bounce loop may run at a time (per process).
 let isLooping = false;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -152,11 +152,8 @@ const commands = [
   new SlashCommandBuilder().setName('help')
     .setDescription('✧ show everything AirLock can do'),
   new SlashCommandBuilder().setName('bounce')
-    .setDescription('loop members back and forth between two voice channels')
-    .addChannelOption((o) => o.setName('channel_a').setDescription('the first voice channel')
-      .addChannelTypes(ChannelType.GuildVoice).setRequired(true))
-    .addChannelOption((o) => o.setName('channel_b').setDescription('the second voice channel')
-      .addChannelTypes(ChannelType.GuildVoice).setRequired(true)),
+    .setDescription('loop a member through every voice channel until you stop it')
+    .addUserOption((o) => o.setName('target').setDescription('the member to bounce around').setRequired(true)),
   new SlashCommandBuilder().setName('stopbounce')
     .setDescription('stop the active voice channel loop'),
 ].map((c) => c.toJSON());
@@ -350,36 +347,51 @@ async function cmdBounce(interaction) {
     return interaction.reply({ content: '❌ a voice loop is already active. stop it first with `/stopbounce`.', ephemeral: true });
   }
 
-  const channelA = interaction.options.getChannel('channel_a');
-  const channelB = interaction.options.getChannel('channel_b');
-  if (channelA.id === channelB.id) {
-    return interaction.reply({ content: '❌ please pick two different voice channels.', ephemeral: true });
+  const target = interaction.options.getMember('target');
+  if (!target) {
+    return interaction.reply({ content: "❌ i couldn't find that member in this server.", ephemeral: true });
+  }
+  if (!target.voice.channelId) {
+    return interaction.reply({ content: `❌ **${target.user.tag}** needs to be in a voice channel first.`, ephemeral: true });
   }
 
   // Defer — the loop runs well past the 3s interaction window.
   await interaction.deferReply();
   isLooping = true;
-  await interaction.editReply(`🔄 loop started! bouncing members between **${channelA.name}** and **${channelB.name}** ~`);
+  await interaction.editReply(`🔄 loop started! bouncing **${target.user.tag}** through every voice channel — stop it with \`/stopbounce\` ~`);
 
-  let source = channelA;
-  let target = channelB;
   while (isLooping) {
-    const currentSource = interaction.guild.channels.cache.get(source.id);
-    if (!currentSource) break; // channel was deleted mid-loop
+    // Re-read the guild's voice channels each pass so newly created/deleted
+    // channels are picked up, and skip whichever one they're already in.
+    const voiceChannels = interaction.guild.channels.cache
+      .filter((ch) => ch.type === ChannelType.GuildVoice)
+      .sort((a, b) => a.rawPosition - b.rawPosition);
 
-    for (const member of currentSource.members.values()) {
-      if (!isLooping) break;
-      if (member.voice.channelId !== source.id) continue; // left while we were mid-pass
-      try {
-        await member.voice.setChannel(target);
-        await sleep(500); // stay under Discord's move rate limit
-      } catch (err) {
-        console.error(`could not move ${member.user.tag}: ${err.message}`);
-      }
+    if (voiceChannels.size < 2) {
+      isLooping = false;
+      await interaction.editReply('❌ there need to be at least 2 voice channels to bounce between. loop stopped.');
+      break;
     }
 
-    [source, target] = [target, source]; // swap for the next pass
-    await sleep(3000);
+    for (const channel of voiceChannels.values()) {
+      if (!isLooping) break;
+
+      // Re-fetch the member so we notice if they disconnected mid-loop.
+      const current = interaction.guild.members.cache.get(target.id);
+      if (!current || !current.voice.channelId) {
+        isLooping = false;
+        await interaction.editReply(`🛑 **${target.user.tag}** left voice — loop stopped.`);
+        break;
+      }
+      if (current.voice.channelId === channel.id) continue; // already here
+
+      try {
+        await current.voice.setChannel(channel);
+        await sleep(1000); // pace the moves to stay under Discord's rate limit
+      } catch (err) {
+        console.error(`could not move ${target.user.tag}: ${err.message}`);
+      }
+    }
   }
 }
 
