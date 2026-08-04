@@ -748,4 +748,123 @@ if (!TOKEN) {
   console.error('Set DISCORD_TOKEN in .env (see .env.example / README).');
   process.exit(1);
 }
+
+// 1. Initialize Bot Client
+const client = new Client({
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildVoiceStates
+    ]
+});
+
+
+
+// Tracking state for the loop
+let isLooping = false;
+
+// Helper to pause code execution
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// 2. Define Slash Commands
+const commands = [
+    new SlashCommandBuilder()
+        .setName('bounce')
+        .setDescription('Loops members between two voice channels')
+        .addChannelOption(option => 
+            option.setName('channel_a')
+                .setDescription('The first voice channel')
+                .addChannelTypes(ChannelType.GuildVoice)
+                .setRequired(true))
+        .addChannelOption(option => 
+            option.setName('channel_b')
+                .setDescription('The second voice channel')
+                .addChannelTypes(ChannelType.GuildVoice)
+                .setRequired(true)),
+
+    new SlashCommandBuilder()
+        .setName('stoploop')
+        .setDescription('Stops the active voice channel loop')
+];
+
+// 3. Register Slash Commands with Discord (Runs on startup)
+client.once('ready', async () => {
+    console.log(`Logged in as ${client.user.tag}!`);
+    
+    const rest = new REST({ version: '10' }).setToken(TOKEN);
+    try {
+        console.log('Started refreshing application (/) commands.');
+        // Registers commands globally. (For instant server testing, use Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID))
+        await rest.put(Routes.applicationCommands(CLIENT_ID), { body: commands });
+        console.log('Successfully reloaded application (/) commands.');
+    } catch (error) {
+        console.error(error);
+    }
+});
+
+// 4. Handle Interaction Events
+client.on('interactionCreate', async (interaction) => {
+    if (!interaction.isChatInputCommand()) return;
+
+    const { commandName, options } = interaction;
+
+    // --- EXECUTE /bounce ---
+    if (commandName === 'bounce') {
+        if (isLooping) {
+            return interaction.reply({ content: '❌ A voice loop is already active. Stop it first with `/stoploop`.', ephemeral: true });
+        }
+
+        const channelA = options.getChannel('channel_a');
+        const channelB = options.getChannel('channel_b');
+
+        if (channelA.id === channelB.id) {
+            return interaction.reply({ content: '❌ Please select two different voice channels.', ephemeral: true });
+        }
+
+        // Defer reply because an infinite loop will bypass the 3-second interaction window
+        await interaction.deferReply();
+        isLooping = true;
+        await interaction.editReply(`🔄 Loop started! Bouncing users between **${channelA.name}** and **${channelB.name}**...`);
+
+        let sourceChannel = channelA;
+        let targetChannel = channelB;
+
+        while (isLooping) {
+            // Re-fetch the channel objects to get an accurate, current list of connected members
+            const currentSource = interaction.guild.channels.cache.get(sourceChannel.id);
+            if (!currentSource) break;
+
+            const members = Array.from(currentSource.members.values());
+
+            if (members.length > 0) {
+                for (const member of members) {
+                    if (!isLooping) break;
+                    // Skip if the member disconnected while the loop was mid-run
+                    if (member.voice.channelId !== sourceChannel.id) continue;
+
+                    try {
+                        await member.voice.setChannel(targetChannel);
+                        await sleep(500); // 500ms delay per user to respect Discord rate limits
+                    } catch (err) {
+                        console.error(`Could not move ${member.user.tag}: ${err.message}`);
+                    }
+                }
+            }
+
+            // Swap roles for the next pass
+            [sourceChannel, targetChannel] = [targetChannel, sourceChannel];
+            await sleep(3000); // Wait 3 seconds before moving everyone back
+        }
+    }
+
+    // --- EXECUTE /STOPLOOP ---
+    if (commandName === 'stoploop') {
+        if (!isLooping) {
+            return interaction.reply({ content: '❌ There is no voice loop running right now.', ephemeral: true });
+        }
+
+        isLooping = false;
+        return interaction.reply('🛑 The voice channel loop has been stopped.');
+    }
+});
+
 client.login(TOKEN);
