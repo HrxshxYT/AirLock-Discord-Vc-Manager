@@ -361,36 +361,35 @@ async function cmdBounce(interaction) {
   await interaction.editReply(`🔄 loop started! bouncing **${target.user.tag}** through every voice channel — stop it with \`/stopbounce\` ~`);
 
   while (isLooping) {
-    // Re-read the guild's voice channels each pass so newly created/deleted
-    // channels are picked up, and skip whichever one they're already in.
-    const voiceChannels = interaction.guild.channels.cache
-      .filter((ch) => ch.type === ChannelType.GuildVoice)
-      .sort((a, b) => a.rawPosition - b.rawPosition);
+    // Re-fetch the member each move so we notice if they disconnected mid-loop.
+    const current = interaction.guild.members.cache.get(target.id);
+    if (!current || !current.voice.channelId) {
+      isLooping = false;
+      await interaction.editReply(`🛑 **${target.user.tag}** left voice — loop stopped.`);
+      break;
+    }
 
-    if (voiceChannels.size < 2) {
+    // Re-read the guild's voice channels each move so newly created/deleted
+    // channels are picked up. Exclude the one they're currently in so every
+    // move actually relocates them.
+    const choices = interaction.guild.channels.cache
+      .filter((ch) => ch.type === ChannelType.GuildVoice && ch.id !== current.voice.channelId);
+
+    if (choices.size < 1) {
       isLooping = false;
       await interaction.editReply('❌ there need to be at least 2 voice channels to bounce between. loop stopped.');
       break;
     }
 
-    for (const channel of voiceChannels.values()) {
-      if (!isLooping) break;
+    // Pick a random destination each time instead of going in order.
+    const pool = [...choices.values()];
+    const destination = pool[Math.floor(Math.random() * pool.length)];
 
-      // Re-fetch the member so we notice if they disconnected mid-loop.
-      const current = interaction.guild.members.cache.get(target.id);
-      if (!current || !current.voice.channelId) {
-        isLooping = false;
-        await interaction.editReply(`🛑 **${target.user.tag}** left voice — loop stopped.`);
-        break;
-      }
-      if (current.voice.channelId === channel.id) continue; // already here
-
-      try {
-        await current.voice.setChannel(channel);
-        await sleep(1000); // pace the moves to stay under Discord's rate limit
-      } catch (err) {
-        console.error(`could not move ${target.user.tag}: ${err.message}`);
-      }
+    try {
+      await current.voice.setChannel(destination);
+      await sleep(250); // pace the moves; discord.js queues if we still hit a rate limit
+    } catch (err) {
+      console.error(`could not move ${target.user.tag}: ${err.message}`);
     }
   }
 }
