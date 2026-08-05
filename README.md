@@ -22,12 +22,6 @@ channel, drags you in, and posts a cute control panel — with a pixel-art banne
 - **/help** aesthetic menu · **thank-you embed** when the bot is added to a server
 - empty temp channels auto-delete
 
-## ✧ a note on "keeping people out"
-
-This bot does **not** rapid-drag or "bounce" users between channels — that's targeted
-harassment, it violates Discord's ToS, and it gets bots (and hosts) banned. Instead:
-**lock** denies the `Connect` permission so unwanted people can't join, and **/block**
-gives one clean disconnect. Stronger control, zero ToS risk.
 
 ## ✧ setup
 
